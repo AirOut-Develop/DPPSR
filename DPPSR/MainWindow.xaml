@@ -1,0 +1,81 @@
+<Window x:Class="DPPSR.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:DPPSR"
+        mc:Ignorable="d"
+        Title="AOID OCR Tester" Height="600" Width="960">
+    <Grid Margin="16">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="2*" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <Border Grid.Column="0"
+                BorderBrush="#FFCCCCCC"
+                BorderThickness="1"
+                Background="#FFF9F9F9">
+            <ScrollViewer HorizontalScrollBarVisibility="Auto"
+                          VerticalScrollBarVisibility="Auto">
+                <Image x:Name="PreviewImage"
+                       Stretch="Uniform"
+                       HorizontalAlignment="Center"
+                       VerticalAlignment="Center" />
+            </ScrollViewer>
+        </Border>
+
+        <StackPanel Grid.Column="1"
+                    Margin="16,0,0,0">
+            <TextBlock Text="라이선스 키"
+                       FontWeight="Bold"
+                       Margin="0,0,0,4" />
+            <StackPanel Orientation="Horizontal"
+                        Margin="0,0,0,12">
+                <TextBox x:Name="LicenseKeyTextBox"
+                         Width="220"
+                         Margin="0,0,8,0" />
+                <Button Content="적용"
+                        Width="80"
+                        Click="OnApplyLicenseClick" />
+            </StackPanel>
+            <StackPanel Orientation="Horizontal"
+                        Margin="0,0,0,12">
+                <Button x:Name="LoadButton"
+                        Width="140"
+                        Height="36"
+                        Margin="0,0,8,0"
+                        Content="이미지 불러오기"
+                        Click="OnLoadImageClick" />
+                <Button x:Name="AnalyzeButton"
+                        Width="140"
+                        Height="36"
+                        Content="분석 실행"
+                        Click="OnAnalyzeClick"
+                        IsEnabled="True" />
+            </StackPanel>
+
+            <TextBlock x:Name="StatusText"
+                       FontWeight="Bold"
+                       Foreground="DarkSlateGray"
+                       Text="tessdata 폴더가 실행 경로에 존재해야 합니다."
+                       TextWrapping="Wrap"
+                       Margin="0,0,0,12" />
+
+            <TextBlock Text="문서 유형 JSON"
+                       FontWeight="Bold"
+                       Margin="0,0,0,6" />
+            <TextBox x:Name="ResultTextBox"
+                     Height="200"
+                     IsReadOnly="True"
+                     TextWrapping="Wrap"
+                     VerticalScrollBarVisibility="Auto"
+                     HorizontalScrollBarVisibility="Auto" />
+
+            <Button Content="JSON 복사"
+                    Width="120"
+                    Margin="0,12,0,0"
+                    Click="OnCopyJsonClick" />
+        </StackPanel>
+    </Grid>
+</Window>
