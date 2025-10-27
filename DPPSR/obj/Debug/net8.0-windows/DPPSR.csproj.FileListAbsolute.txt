@@ -28,6 +28,7 @@ C:\Users\jwlryk\source\repos\DPPSR\DPPSR\obj\Debug\net8.0-windows\DPPSR.Generate
 C:\Users\jwlryk\source\repos\DPPSR\DPPSR\obj\Debug\net8.0-windows\DPPSR.AssemblyInfoInputs.cache
 C:\Users\jwlryk\source\repos\DPPSR\DPPSR\obj\Debug\net8.0-windows\DPPSR.AssemblyInfo.cs
 C:\Users\jwlryk\source\repos\DPPSR\DPPSR\obj\Debug\net8.0-windows\DPPSR.csproj.CoreCompileInputs.cache
+C:\Users\jwlryk\source\repos\DPPSR\DPPSR\obj\Debug\net8.0-windows\DPPSR.sourcelink.json
 C:\Users\jwlryk\source\repos\DPPSR\DPPSR\obj\Debug\net8.0-windows\DPPSR.csproj.Up2Date
 C:\Users\jwlryk\source\repos\DPPSR\DPPSR\obj\Debug\net8.0-windows\DPPSR.dll
 C:\Users\jwlryk\source\repos\DPPSR\DPPSR\obj\Debug\net8.0-windows\refint\DPPSR.dll

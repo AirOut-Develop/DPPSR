@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("DPPSR")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+b5271697cf4005ac3a0dae1712640d340a921b52")]
 [assembly: System.Reflection.AssemblyProductAttribute("DPPSR")]
 [assembly: System.Reflection.AssemblyTitleAttribute("DPPSR")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

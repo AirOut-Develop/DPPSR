@@ -8,6 +8,7 @@ using AOIDSClib.Licensing;
 using AOIDSClib.Models;
 using Microsoft.Win32;
 using System.Net.Http;
+using System.Diagnostics;
 
 namespace DPPSR
 {
@@ -102,6 +103,8 @@ namespace DPPSR
                 var analyzer = EnsureAnalyzer();
                 CardAnalysisResult result = await analyzer.AnalyzeAsync(_selectedImagePath);
                 var classification = DocumentClassifier.Classify(result);
+
+                Debug.WriteLine(result.ToString());
 
                 ResultTextBox.Text = classification.ToJson();
                 StatusText.Text = classification.Result
