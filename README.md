@@ -13,7 +13,7 @@
    - (선택) `Configuration/fields.json`: 커스텀 필드 좌표를 사용하려면 해당 파일을 준비하고 `CardAnalyzerOptions.FieldDefinitionPath`를 설정합니다.
 
 3. **라이선스 서버**
-   - REST 엔드포인트는 배포 환경에 따라 별도로 지정해야 합니다.
+   - 기본 엔드포인트는 `https://lcns.platform.ooo/license/verify` 입니다. 다른 환경을 쓰려면 `RestLicenseRegistry` 생성자에 지정하세요.
    - 서버에는 사용하려는 라이선스 키가 사전에 등록되어 있어야 하며, 첫 요청 시 CPU ID가 바인딩됩니다.
 
 ## 프로젝트 설정 확인
@@ -125,12 +125,12 @@ RrnValidator.IsAdult(b);                           // 성인 여부
 
 검증은 `CardAnalyzer` 생성자에서 한 번 수행됩니다.
 
-서버에 **닿지 못한 경우**(5xx·회선 단절·타임아웃)에는 마지막 성공 검증으로 기본 **72시간**까지 동작합니다.
+서버에 **닿지 못한 경우**(5xx·429·회선 단절·타임아웃)에는 마지막 성공 검증으로 기본 **72시간**까지 동작합니다.
 서버가 명시적으로 거절하면(`EXPIRED` / `INACTIVE` / `DELETED` / `CPU_MISMATCH` / `NOT_FOUND`) 즉시 막힙니다.
 
 ```csharp
 var registry = new RestLicenseRegistry(
-    verifyEndpoint: new Uri("https://.../license/verify"),
+    verifyEndpoint: null,                         // 생략 시 https://lcns.platform.ooo/license/verify
     offlineGracePeriod: TimeSpan.FromHours(72),   // 생략 시 72시간, 끄려면 TimeSpan.Zero
     productCode: "OG9-Kiosk/2.1.0");              // 생략 시 실행 파일 이름이 자동으로 쓰임
 
