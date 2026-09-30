@@ -126,6 +126,39 @@ RrnValidator.IsAdult(b);                                  // true
 - `kor` 언어 데이터가 있어야 이름 인식이 동작합니다. 없으면 이름만 비고 번호 인식은 정상 동작합니다.
 - 주민등록번호가 없는 면(예: 운전면허증 영문 뒷면)은 `RRN_NOT_FOUND` 로 정상 처리됩니다.
 
+## 라이선스 검증 — 오프라인 유예
+
+검증은 `CardAnalyzer` 생성자에서 한 번 수행됩니다. 이전 빌드는 캐시도 유예도 없어서 서버에 닿지 못하면 그대로 생성이 실패했습니다.
+현장에서 원격 DB 타임아웃이 하루 1~3회 발생하고 그때마다 제품이 뜨지 않았습니다.
+
+이번 빌드는 성공한 검증을 기기에 남기고(`%LOCALAPPDATA%\AOIDSClib\license\`), **서버에 닿지 못한 경우에 한해** 기본 72시간까지 그 결과로 통과시킵니다.
+
+| 상황 | 유예 |
+|---|---|
+| 5xx, 회선 단절, 타임아웃 | **줍니다** |
+| `EXPIRED` / `INACTIVE` / `DELETED` / `CPU_MISMATCH` / `NOT_FOUND` | 주지 않습니다 |
+| 캐시의 만료 시각이 이미 지남 | 주지 않습니다 |
+| 캐시 변조 흔적 | 주지 않습니다 |
+
+유예는 장애를 견디기 위한 것이지 서버의 거절을 뒤집기 위한 것이 아닙니다. 서버가 명시적으로 거절하면 캐시가 있어도 즉시 막힙니다.
+
+```csharp
+var registry = new RestLicenseRegistry(
+    verifyEndpoint: new Uri("https://.../license/verify"),
+    offlineGracePeriod: TimeSpan.FromHours(72));   // 생략 시 기본 72시간, 끄려면 TimeSpan.Zero
+
+if (registry.LastVerificationUsedCache)
+    Log($"서버 미응답 — {registry.LastCachedVerificationAt:u} 검증 결과로 동작 중");
+```
+
+그 밖에:
+- `HttpClient` 기본 타임아웃이 **100초 → 10초**로 줄었습니다(직접 주입한 `HttpClient`는 그 설정을 존중합니다).
+- 회선 단절·타임아웃도 `LicenseVerificationException`(`StatusCode = 0`)으로 감쌉니다. 이전에는 `HttpRequestException`이 그대로 올라와 호출부가 못 잡았습니다.
+
+**서버 측 요건:** 응답에 `cpuId`를 그대로 echo해야 합니다. 클라이언트가 응답의 `cpuId`와 로컬 머신 ID를 다시 비교하므로, 빠지면 서버가 200을 줘도 "다른 기기"로 자체 거절합니다.
+
+**머신 ID는 CPU 식별자가 아닙니다.** `HKLM\SOFTWARE\Microsoft\Cryptography\MachineGuid`(Windows 설치 식별자)를 우선 사용하고, 없을 때만 WMI `ProcessorId`로 넘어갑니다. 재설치·이미지 복제로 값이 바뀝니다.
+
 ## 참고 사항
 - `MainWindow`는 테스트 목적으로 간단히 구성돼 있으므로, 실제 애플리케이션에 반영할 때는 UI/UX 요구사항에 맞게 수정하세요.
 - 라이선스 검증 실패는 `RestLicenseRegistry`에서 `LicenseVerificationException`으로 처리하며, UI에서 잡아서 메시지로 출력합니다. 예외가 자주 발생하면 Visual Studio의 예외 설정(Thrown)을 조정하거나 서버 상태를 점검하세요.
