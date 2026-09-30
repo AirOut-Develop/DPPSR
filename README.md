@@ -55,11 +55,11 @@
 | `type` (미판별) | `None` | `none` |
 | `orientation` (상세 JSON) | `Deg0` | `deg0` |
 
-오른쪽이 이 문서가 원래 규격으로 적어 둔 값입니다. 이전 빌드는 `[EnumMember]` 를 무시해 C# 식별자를 내보내고 있었고, 그래서 문서와 실제가 어긋나 있었습니다. **`type` 문자열로 분기하는 코드가 있다면 값을 확인하세요.** 읽을 때는 양쪽 표기를 모두 받습니다.
+오른쪽이 이 문서가 규격으로 정한 값입니다. **`type` 문자열로 분기하는 코드가 있다면 확인하세요.** 읽을 때는 양쪽 표기를 모두 받습니다.
 
 `Birth.BirthDay` 의 형식(`NNNNNN-NNNNNNN`)은 그대로입니다. 검증을 통과하면 내용이 검증본으로 바뀔 뿐입니다. 6자리 생년월일만 필요하면 `Identity.BirthDay` 를 쓰세요.
 
-그 밖에 같은 이미지라도 **인식 결과가 달라집니다** — 네 방향을 시도하므로 이전에 실패하던 건이 판별되고, 검증을 통과하지 못한 번호는 더 이상 생년월일로 나가지 않습니다.
+같은 이미지라도 **인식 결과가 달라집니다.** 이전에 실패하던 건이 판별되고, 검증을 통과하지 못한 번호는 더 이상 생년월일로 나가지 않습니다.
 
 ## 신분증 기재사항 인식
 
@@ -71,10 +71,10 @@ var result = await analyzer.ClassifyDocumentAsync(imagePath);
 
 if (result.Identity.Recognized)
 {
-    result.IdNumber;    // "9606091860218" (하이픈 없는 13자리)
-    result.BirthDate;   // 1996-06-09 (성별코드로 세기 판정)
-    result.Name;        // "김보석"
-    result.IsAdult;     // true
+    result.IdNumber;    // 하이픈 없는 13자리
+    result.BirthDate;   // 성별코드로 세기를 판정한 생년월일
+    result.Name;        // 이름 (참고값 — 아래 참고)
+    result.IsAdult;     // 성인 여부
 }
 else
 {
@@ -92,16 +92,16 @@ else
 번호만 따로 검증하려면 `AOIDSClib.Recognition.RrnValidator` 를 직접 쓸 수 있습니다.
 
 ```csharp
-RrnValidator.IsChecksumValid("9606091860218");            // true
-RrnValidator.TryGetBirthDate("9606091860218", out var b); // b = 1996-06-09
-RrnValidator.IsAdult(b);                                  // true
+RrnValidator.IsChecksumValid(digits13);            // 체크섬
+RrnValidator.TryGetBirthDate(digits13, out var b); // 실존 날짜 확인 + 생년월일
+RrnValidator.IsAdult(b);                           // 성인 여부
 ```
 
 ### 투입 방향
 
-카드를 세로로 넣든 거꾸로 넣든 같은 결과가 나옵니다. 축소본으로 네 방향을 먼저 훑어 유망한 순서를 정한 뒤
-원본을 그 순서로 읽으므로, 버릴 방향을 원본 해상도로 OCR 하지 않습니다.
-문서 종류 판별도 채택된 방향의 결과로 하므로, 세로 투입 시 분류가 실패하던 문제가 함께 해소됩니다.
+카드를 세로로 넣든 거꾸로 넣든 같은 결과가 나옵니다. 문서 종류 판별도 같습니다.
+방향을 여러 번 시도하므로 인식에 **1초 안팎**이 걸립니다. 카드 방향이 고정된 환경이면
+`OrientationCandidates = new[] { 0 }` 으로 줄일 수 있습니다.
 
 ### 인식 옵션
 
@@ -114,86 +114,42 @@ RrnValidator.IsAdult(b);                                  // true
 | `PrescanScale` | `0.35` | 사전탐색 축소 비율 |
 | `TrimDarkBorder` | `true` | 실패 시 가장자리 검은 여백을 잘라내고 재시도 |
 
-### 실측 인식률
-
-스캐너 박스 카메라 원본 34장(색조 왜곡·글레어 포함) 기준, 이식 전 라이브러리와 같은 조건으로 비교했습니다.
-
-| | 이전 빌드 | 이번 빌드 |
-|---|---|---|
-| 문서 종류 판별 | 24 (71%) | 25 (74%) |
-| 번호 추출 | 13 (38%) | 18 (53%) |
-| 그중 검증 통과 | 12 (1건은 오독) | 18 (전부) |
-| 이름 | 없음 | 13 |
-| 중앙값 | 288ms | 1007ms |
-
-이전 빌드가 어떤 운전면허증에서 생년월일로 `2090814…`(존재하지 않는 날짜)를 내보낸 사례가 실제로 있었습니다.
-면허번호 줄의 숫자를 긁어 만든 값으로, 성인 판정에 쓰면 무조건 통과합니다.
-이번 빌드는 면허번호 패턴을 후보에서 제거하고 검증으로 걸러 이런 값을 내보내지 않습니다.
-
-읽지 못하는 건은 주로 중국 여권(주민번호 자체가 없음), 심하게 뒤집히거나 비스듬히 걸린 카드, 글레어가 강한 저해상도 원본입니다.
-
-### 속도
-
-네 방향을 시도하므로 중앙값이 288ms → 1007ms 로 늘었습니다.
-한 방향만 읽어도 되는 환경이면 `OrientationCandidates = new[] { 0 }` 으로 되돌릴 수 있습니다.
-
 ### 알아 둘 점
 
-- **이름은 참고값입니다.** 흐린 IR 스캔본에서 한 글자를 놓칠 수 있습니다(실측에서 `김보석` → `경보석`).
+- **이름은 참고값입니다.** 흐린 스캔본에서 한 글자를 놓칠 수 있습니다.
   본인 확인 근거로는 검증을 통과한 번호를 쓰세요.
 - `kor` 언어 데이터가 있어야 이름 인식이 동작합니다. 없으면 이름만 비고 번호 인식은 정상 동작합니다.
 - 주민등록번호가 없는 면(예: 운전면허증 영문 뒷면)은 `RRN_NOT_FOUND` 로 정상 처리됩니다.
 
-## 라이선스 검증 — 오프라인 유예
+## 라이선스 검증
 
-검증은 `CardAnalyzer` 생성자에서 한 번 수행됩니다. 이전 빌드는 캐시도 유예도 없어서 서버에 닿지 못하면 그대로 생성이 실패했습니다.
-현장에서 원격 DB 타임아웃이 하루 1~3회 발생하고 그때마다 제품이 뜨지 않았습니다.
+검증은 `CardAnalyzer` 생성자에서 한 번 수행됩니다.
 
-이번 빌드는 성공한 검증을 기기에 남기고(`%LOCALAPPDATA%\AOIDSClib\license\`), **서버에 닿지 못한 경우에 한해** 기본 72시간까지 그 결과로 통과시킵니다.
-
-| 상황 | 유예 |
-|---|---|
-| 5xx, 회선 단절, 타임아웃 | **줍니다** |
-| `EXPIRED` / `INACTIVE` / `DELETED` / `CPU_MISMATCH` / `NOT_FOUND` | 주지 않습니다 |
-| 캐시의 만료 시각이 이미 지남 | 주지 않습니다 |
-| 캐시 변조 흔적 | 주지 않습니다 |
-
-유예는 장애를 견디기 위한 것이지 서버의 거절을 뒤집기 위한 것이 아닙니다. 서버가 명시적으로 거절하면 캐시가 있어도 즉시 막힙니다.
+서버에 **닿지 못한 경우**(5xx·회선 단절·타임아웃)에는 마지막 성공 검증으로 기본 **72시간**까지 동작합니다.
+서버가 명시적으로 거절하면(`EXPIRED` / `INACTIVE` / `DELETED` / `CPU_MISMATCH` / `NOT_FOUND`) 즉시 막힙니다.
 
 ```csharp
 var registry = new RestLicenseRegistry(
     verifyEndpoint: new Uri("https://.../license/verify"),
-    offlineGracePeriod: TimeSpan.FromHours(72));   // 생략 시 기본 72시간, 끄려면 TimeSpan.Zero
+    offlineGracePeriod: TimeSpan.FromHours(72),   // 생략 시 72시간, 끄려면 TimeSpan.Zero
+    productCode: "OG9-Kiosk/2.1.0");              // 생략 시 실행 파일 이름이 자동으로 쓰임
 
 if (registry.LastVerificationUsedCache)
     Log($"서버 미응답 — {registry.LastCachedVerificationAt:u} 검증 결과로 동작 중");
 ```
 
-서버가 응답에 `offlineGraceHours`(0이면 유예 없음)와 `policyVersion`을 실어 보내면 클라이언트가 따릅니다. 우선순위는 **호출부 명시값 > 서버 지시 > 기본 72시간**입니다. 서버가 안 보내도 기존 동작 그대로입니다.
+- 서버 응답에 `offlineGraceHours`·`policyVersion`이 있으면 그 값을 따릅니다.
+- 통신 실패도 `LicenseVerificationException`(`StatusCode = 0`)으로 올라옵니다. 이 타입 하나만 잡으면 됩니다.
+- 요청 타임아웃 기본 **10초**(직접 주입한 `HttpClient`는 그 설정을 따릅니다).
+- 검증 결과는 `%LOCALAPPDATA%\AOIDSClib\license\`에 남습니다.
 
-**유예는 스스로 연장되지 않습니다.** 캐시로 통과해도 마지막 성공 시각을 갱신하지 않으므로, 서버가 계속 죽어 있으면 마지막 *성공* 검증으로부터 유예 기간이 지난 시점에 막힙니다.
-
-요청에 진단용 헤더 두 개가 붙습니다.
-
-| 헤더 | 언제 | 값 |
-|---|---|---|
-| `X-Client` | 항상 | `AOIDSClib/<AssemblyVersion>` |
-| `X-License-Grace-Used` | 직전에 캐시로 버텼을 때 한 번 | 캐시 통과 시각(ISO 8601) |
-
-그 밖에:
-- `HttpClient` 기본 타임아웃이 **100초 → 10초**로 줄었습니다(직접 주입한 `HttpClient`는 그 설정을 존중합니다).
-- 회선 단절·타임아웃도 `LicenseVerificationException`(`StatusCode = 0`)으로 감쌉니다. 이전에는 `HttpRequestException`이 그대로 올라와 호출부가 못 잡았습니다.
-
-**서버 측 요건:** 응답에 `cpuId`를 그대로 echo해야 합니다. 클라이언트가 응답의 `cpuId`와 로컬 머신 ID를 다시 비교하므로, 빠지면 서버가 200을 줘도 "다른 기기"로 자체 거절합니다.
-
-**머신 ID는 CPU 식별자가 아닙니다.** `HKLM\SOFTWARE\Microsoft\Cryptography\MachineGuid`(Windows 설치 식별자)를 우선 사용하고, 없을 때만 WMI `ProcessorId`로 넘어갑니다. 재설치·이미지 복제로 값이 바뀝니다.
+**기기 식별자는 Windows 설치 식별자(`MachineGuid`)입니다.** OS 재설치·이미지 복제로 값이 바뀌므로, 그 경우 관리자 해제 후 재바인딩이 필요합니다.
 
 ## 참고 사항
 - `MainWindow`는 테스트 목적으로 간단히 구성돼 있으므로, 실제 애플리케이션에 반영할 때는 UI/UX 요구사항에 맞게 수정하세요.
 - 라이선스 검증 실패는 `RestLicenseRegistry`에서 `LicenseVerificationException`으로 처리하며, UI에서 잡아서 메시지로 출력합니다. 예외가 자주 발생하면 Visual Studio의 예외 설정(Thrown)을 조정하거나 서버 상태를 점검하세요.
 - `MachineFingerprintProvider`는 Windows에서 WMI를 통해 CPU ID를 우선 가져오며, 실패 시 머신/도메인 이름 해시로 대체합니다.
 - `CardAnalyzerOptions`의 `EnableAutoRotate180`, `MergeAdjacentTextBlocks`, `FieldDefinitionPath` 등의 옵션을 필요에 따라 조정해 OCR 결과를 튜닝할 수 있습니다.
-- 문서 종류 문자열이 규격대로(`DriveLicence`, `ResidentRegistration`, `ForeignerRegistration`, `Passport`, `none`) 나가도록 직렬화가 수정되었습니다. 이전 빌드는 C# 식별자(`DriverLicense` 등)를 내보냈으므로, 그 문자열에 맞춰 둔 코드가 있다면 확인이 필요합니다. 읽을 때는 양쪽 표기를 모두 받습니다.
 
 ## 지원 문의
 내부 REST 서버와 라이선스 키 관련 문제는 서버 담당자에게 문의하세요. 나머지 OCR/분석 로직은 AOIDSClib DLL 버전을 확인한 뒤 이 문서를 토대로 셋업하면 됩니다.
