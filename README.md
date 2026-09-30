@@ -151,6 +151,17 @@ if (registry.LastVerificationUsedCache)
     Log($"서버 미응답 — {registry.LastCachedVerificationAt:u} 검증 결과로 동작 중");
 ```
 
+서버가 응답에 `offlineGraceHours`(0이면 유예 없음)와 `policyVersion`을 실어 보내면 클라이언트가 따릅니다. 우선순위는 **호출부 명시값 > 서버 지시 > 기본 72시간**입니다. 서버가 안 보내도 기존 동작 그대로입니다.
+
+**유예는 스스로 연장되지 않습니다.** 캐시로 통과해도 마지막 성공 시각을 갱신하지 않으므로, 서버가 계속 죽어 있으면 마지막 *성공* 검증으로부터 유예 기간이 지난 시점에 막힙니다.
+
+요청에 진단용 헤더 두 개가 붙습니다.
+
+| 헤더 | 언제 | 값 |
+|---|---|---|
+| `X-Client` | 항상 | `AOIDSClib/<AssemblyVersion>` |
+| `X-License-Grace-Used` | 직전에 캐시로 버텼을 때 한 번 | 캐시 통과 시각(ISO 8601) |
+
 그 밖에:
 - `HttpClient` 기본 타임아웃이 **100초 → 10초**로 줄었습니다(직접 주입한 `HttpClient`는 그 설정을 존중합니다).
 - 회선 단절·타임아웃도 `LicenseVerificationException`(`StatusCode = 0`)으로 감쌉니다. 이전에는 `HttpRequestException`이 그대로 올라와 호출부가 못 잡았습니다.
