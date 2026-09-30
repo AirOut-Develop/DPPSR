@@ -36,16 +36,78 @@
 3. **분석 실행**
    - 라이선스가 검증되고 이미지가 선택된 상태에서 “분석 실행”을 누르면 OCR 분석이 수행됩니다.
    - 결과 JSON에는 운전면허증 여부 등 문서 판별 정보가 `{ "result": true/false, "type": "DriveLicence" }` 형태로 표시됩니다.
+   - 기재사항(주민등록번호·이름·성인 여부)까지 필요하면 `ToFullJson()` 또는 `Identity` 속성을 사용합니다. 아래 **신분증 기재사항 인식** 참고.
 
 4. **결과 확인**
    - JSON 결과 텍스트 박스에서 분석 결과를 확인하거나 “JSON 복사” 버튼으로 클립보드에 복사할 수 있습니다.
    - 오류 발생 시 상태 메시지와 별도의 대화상자에 상세 내용이 표시됩니다 (라이선스 문제, tessdata 누락, 이미지 로드 실패 등).
+
+## 신분증 기재사항 인식
+
+주민등록번호·이름·성인 여부를 함께 얻을 수 있습니다. 번호는 **체크섬과 실존 날짜 검증을 모두 통과한 경우에만** 채워집니다.
+
+```csharp
+using var analyzer = new CardAnalyzer(options);
+var result = await analyzer.ClassifyDocumentAsync(imagePath);
+
+if (result.Identity.Recognized)
+{
+    result.IdNumber;    // "9606091860218" (하이픈 없는 13자리)
+    result.BirthDate;   // 1996-06-09 (성별코드로 세기 판정)
+    result.Name;        // "김보석"
+    result.IsAdult;     // true
+}
+else
+{
+    result.Identity.Error;   // RRN_NOT_FOUND / RRN_INVALID / NO_TEXT
+}
+```
+
+### 성인 판정 기준
+
+`IsAdult` 는 만 나이가 아니라 **연 나이**(현재 연도 − 출생 연도)가 19세 이상인지를 봅니다. 청소년보호법 기준입니다.
+2026년이라면 2007년생은 성인, 2008년생은 미성년입니다.
+
+검증에 실패한 번호는 언제나 `false` 입니다. **읽지 못한 것을 통과시키지 않습니다.**
+
+번호만 따로 검증하려면 `AOIDSClib.Recognition.RrnValidator` 를 직접 쓸 수 있습니다.
+
+```csharp
+RrnValidator.IsChecksumValid("9606091860218");            // true
+RrnValidator.TryGetBirthDate("9606091860218", out var b); // b = 1996-06-09
+RrnValidator.IsAdult(b);                                  // true
+```
+
+### 투입 방향
+
+카드를 세로로 넣든 거꾸로 넣든 같은 결과가 나옵니다. 축소본으로 네 방향을 먼저 훑어 유망한 순서를 정한 뒤
+원본을 그 순서로 읽으므로, 버릴 방향을 원본 해상도로 OCR 하지 않습니다.
+문서 종류 판별도 채택된 방향의 결과로 하므로, 세로 투입 시 분류가 실패하던 문제가 함께 해소됩니다.
+
+### 인식 옵션
+
+| 옵션 | 기본값 | 설명 |
+|---|---|---|
+| `EnableIdentityRecognition` | `true` | 끄면 예전처럼 0도 한 방향만 읽습니다 |
+| `OrientationCandidates` | `{0,180,90,270}` | 시도 순서 |
+| `StopAtFirstValidOrientation` | `true` | 검증 통과 시 남은 방향 생략 |
+| `EnableOrientationPrescan` | `true` | 축소본 사전탐색 |
+| `PrescanScale` | `0.35` | 사전탐색 축소 비율 |
+| `TrimDarkBorder` | `true` | 실패 시 가장자리 검은 여백을 잘라내고 재시도 |
+
+### 알아 둘 점
+
+- **이름은 참고값입니다.** 흐린 IR 스캔본에서 한 글자를 놓칠 수 있습니다(실측에서 `김보석` → `경보석`).
+  본인 확인 근거로는 검증을 통과한 번호를 쓰세요.
+- `kor` 언어 데이터가 있어야 이름 인식이 동작합니다. 없으면 이름만 비고 번호 인식은 정상 동작합니다.
+- 주민등록번호가 없는 면(예: 운전면허증 영문 뒷면)은 `RRN_NOT_FOUND` 로 정상 처리됩니다.
 
 ## 참고 사항
 - `MainWindow`는 테스트 목적으로 간단히 구성돼 있으므로, 실제 애플리케이션에 반영할 때는 UI/UX 요구사항에 맞게 수정하세요.
 - 라이선스 검증 실패는 `RestLicenseRegistry`에서 `LicenseVerificationException`으로 처리하며, UI에서 잡아서 메시지로 출력합니다. 예외가 자주 발생하면 Visual Studio의 예외 설정(Thrown)을 조정하거나 서버 상태를 점검하세요.
 - `MachineFingerprintProvider`는 Windows에서 WMI를 통해 CPU ID를 우선 가져오며, 실패 시 머신/도메인 이름 해시로 대체합니다.
 - `CardAnalyzerOptions`의 `EnableAutoRotate180`, `MergeAdjacentTextBlocks`, `FieldDefinitionPath` 등의 옵션을 필요에 따라 조정해 OCR 결과를 튜닝할 수 있습니다.
+- 문서 종류 문자열이 규격대로(`DriveLicence`, `ResidentRegistration`, `ForeignerRegistration`, `Passport`, `none`) 나가도록 직렬화가 수정되었습니다. 이전 빌드는 C# 식별자(`DriverLicense` 등)를 내보냈으므로, 그 문자열에 맞춰 둔 코드가 있다면 확인이 필요합니다. 읽을 때는 양쪽 표기를 모두 받습니다.
 
 ## 지원 문의
 내부 REST 서버와 라이선스 키 관련 문제는 서버 담당자에게 문의하세요. 나머지 OCR/분석 로직은 AOIDSClib DLL 버전을 확인한 뒤 이 문서를 토대로 셋업하면 됩니다.
