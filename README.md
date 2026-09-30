@@ -35,31 +35,31 @@
 
 3. **분석 실행**
    - 라이선스가 검증되고 이미지가 선택된 상태에서 “분석 실행”을 누르면 OCR 분석이 수행됩니다.
-   - 결과 JSON에는 문서 판별 정보와 생년월일이 `{ "result": true, "type": "DriveLicence", "birth": "1996-06-09" }` 형태로 표시됩니다.
-   - `birth`는 체크섬·실존 날짜 검증을 통과한 경우에만 들어갑니다. 검증하지 못하면 **키 자체가 빠집니다** — 읽지 못한 값을 추측해 넣지 않습니다. `result`/`type`만 읽던 기존 연동은 그대로 동작합니다.
-   - 이름·성인 여부까지 필요하면 `ToFullJson()` 또는 `Identity` 속성을 사용합니다. 아래 **신분증 기재사항 인식** 참고.
+   - 결과 JSON은 `{ "result": true, "type": "ResidentRegistrationCard", "birth": "1996-06-09", "adult": true }` 형태입니다.
+   - `birth`·`adult`는 검증을 통과한 경우에만 들어갑니다. `result`/`type`만 읽던 기존 연동은 그대로 동작합니다.
+   - 이름까지 필요하면 `ToFullJson()` 또는 `Identity` 속성을 사용합니다. 아래 **신분증 기재사항 인식** 참고.
 
 4. **결과 확인**
    - JSON 결과 텍스트 박스에서 분석 결과를 확인하거나 “JSON 복사” 버튼으로 클립보드에 복사할 수 있습니다.
    - 오류 발생 시 상태 메시지와 별도의 대화상자에 상세 내용이 표시됩니다 (라이선스 문제, tessdata 누락, 이미지 로드 실패 등).
 
-## 기존 연동에서 올라올 때 확인할 것
+## 기존 연동에서 올라올 때
 
-호출 코드는 그대로 두어도 컴파일·동작합니다. 다만 **출력 문자열이 두 군데 바뀌었습니다.**
+**호출 코드와 `result`·`type` 값은 그대로입니다.** 결과 JSON에 필드 두 개가 늘어납니다.
 
-| | 이전 빌드가 실제로 내보낸 값 | 이번 빌드 |
-|---|---|---|
-| `type` (운전면허) | `DriverLicense` | `DriveLicence` |
-| `type` (주민등록증) | `ResidentRegistrationCard` | `ResidentRegistration` |
-| `type` (외국인등록증) | `ForeignerRegistrationCard` | `ForeignerRegistration` |
-| `type` (미판별) | `None` | `none` |
-| `orientation` (상세 JSON) | `Deg0` | `deg0` |
+```diff
+- {"result":true,"type":"ResidentRegistrationCard"}
++ {"result":true,"type":"ResidentRegistrationCard","birth":"1996-06-09","adult":true}
+```
 
-오른쪽이 이 문서가 규격으로 정한 값입니다. **`type` 문자열로 분기하는 코드가 있다면 확인하세요.** 읽을 때는 양쪽 표기를 모두 받습니다.
+| 필드 | 내용 |
+|---|---|
+| `birth` | 검증을 통과한 생년월일 (`yyyy-MM-dd`) |
+| `adult` | 청소년보호법 기준 성인 여부 |
 
-`Birth.BirthDay` 의 형식(`NNNNNN-NNNNNNN`)은 그대로입니다. 검증을 통과하면 내용이 검증본으로 바뀔 뿐입니다. 6자리 생년월일만 필요하면 `Identity.BirthDay` 를 쓰세요.
+두 필드는 **체크섬과 실존 날짜 검증을 모두 통과했을 때만** 들어갑니다. 검증하지 못하면 `adult:false`가 아니라 **키 자체가 빠집니다** — 없는 것은 '미성년'이 아니라 '확인하지 못함'입니다. 기존처럼 `result`·`type`만 읽으셔도 그대로 동작합니다.
 
-같은 이미지라도 **인식 결과가 달라집니다.** 이전에 실패하던 건이 판별되고, 검증을 통과하지 못한 번호는 더 이상 생년월일로 나가지 않습니다.
+같은 이미지라도 **인식 결과는 달라질 수 있습니다.** 이전에 판별하지 못하던 건이 판별되고, 검증을 통과하지 못한 번호는 더 이상 생년월일로 나가지 않습니다.
 
 ## 신분증 기재사항 인식
 
